@@ -9,8 +9,8 @@ int main(int argc, char** argv) {
     loadConfig();
     DeribitClient client;
     // std::cout << client << std::endl;
-    client.authenticate();
     // std::cout << client << std::endl;
+    // std::cout << client.get_positions().text << std::endl;
 
     return 0;
 }
