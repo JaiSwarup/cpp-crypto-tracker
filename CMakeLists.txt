@@ -16,7 +16,11 @@ find_package(Boost REQUIRED COMPONENTS system thread)
 file(GLOB SOURCES "src/*.cpp")
 
 add_executable(deribit_order_management
-  ${SOURCES}
+  src/main.cpp
+  src/deribit_client.cpp
+  src/websocket_manager.cpp
+  src/config.cpp
+  src/dotenv.cpp
 )
 target_link_libraries(deribit_order_management
   PRIVATE
@@ -25,8 +29,8 @@ target_link_libraries(deribit_order_management
     # ftxui::dom
     # ftxui::component
     websocketpp::websocketpp 
-    Boost::system 
-    Boost::thread 
+    # Boost::system 
+    # Boost::thread 
     OpenSSL::SSL
     OpenSSL::Crypto
     nlohmann_json::nlohmann_json
