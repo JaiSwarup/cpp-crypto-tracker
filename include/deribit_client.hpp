@@ -30,7 +30,7 @@ class DeribitClient {
         std::string access_token;
         std::string refresh_token;
 
-        cpr::Response post(const nlohmann::json& payload, bool auth_required);
+        cpr::Response post(const nlohmann::json& payload, bool auth_required = false);
         cpr::Response get(const nlohmann::json& payload);
 };
 
