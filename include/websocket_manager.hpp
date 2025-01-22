@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <string>
 #include <mutex>
+#include "logger.hpp"
 #include "deribit_client.hpp"
 
 typedef websocketpp::server<websocketpp::config::asio> server;
@@ -32,7 +33,7 @@ public:
     void run(uint16_t port);
     void stop();
     bool is_running() const;
-
+    Logger logger;
 private:
     void on_message(connection_hdl hdl, server::message_ptr msg);
     void broadcast_orderbook(const std::string& symbol, const std::string& orderbook_update);

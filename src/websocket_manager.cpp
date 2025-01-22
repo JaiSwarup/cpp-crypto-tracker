@@ -1,19 +1,21 @@
 #include "websocket_manager.hpp"
 #include <nlohmann/json.hpp>
+#include "performance_tracker.hpp"
 #include <iostream>
 
 using json = nlohmann::json;
 
 WebSocketServer::WebSocketServer(DeribitClient& deribit_client)
     : m_running(false), m_deribit_client(deribit_client) {
-
+    
+    logger = Logger();
     m_server.clear_access_channels(websocketpp::log::alevel::all);
     m_server.init_asio();
 
     m_server.set_open_handler([this](connection_hdl hdl) {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_connections.insert(hdl);
-        std::cout << "Client connected!" << std::endl;
+        logger.log(Logger::LogLevel::INFO, "Client connected");
     });
 
     m_server.set_close_handler([this](connection_hdl hdl) {
@@ -22,7 +24,7 @@ WebSocketServer::WebSocketServer(DeribitClient& deribit_client)
         for (auto& pair : m_subscriptions) {
             pair.second.erase(hdl);
         }
-        std::cout << "Client disconnected!" << std::endl;
+        logger.log(Logger::LogLevel::INFO, "Client disconnected");
     });
 
     m_server.set_message_handler([this](connection_hdl hdl, server::message_ptr msg) {
@@ -30,8 +32,10 @@ WebSocketServer::WebSocketServer(DeribitClient& deribit_client)
     });
 
     m_deribit_client.set_broadcast_callback([this](const std::string& channel, const std::string& data) {
-        std::cout << "Received broadcast callback for channel: " << channel << std::endl;
+        PerformanceTracker t("broadcast_orderbook");
+        logger.log(Logger::LogLevel::INFO, "Received broadcast from Deribit");
         broadcast_orderbook(channel, data);
+        t.stop();
     });
 }
 
@@ -47,7 +51,7 @@ void WebSocketServer::run(uint16_t port) {
         m_running = true;
         m_server.run();
     } catch (const std::exception& e) {
-        std::cerr << "WebSocket server error: " << e.what() << std::endl;
+        logger.log(Logger::LogLevel::ERROR, "Error running WebSocket server: " + std::string(e.what()));
         m_running = false;
         throw;
     }
@@ -60,7 +64,7 @@ void WebSocketServer::stop() {
         m_server.stop();
         m_running = false;
     } catch (const std::exception& e) {
-        std::cerr << "Error stopping WebSocket server: " << e.what() << std::endl;
+        logger.log(Logger::LogLevel::ERROR, "Error stopping WebSocket server: " + std::string(e.what()));
     }
 }
 
@@ -73,7 +77,7 @@ void WebSocketServer::on_message(connection_hdl hdl, server::message_ptr msg) {
     
     try {
         std::string payload = msg->get_payload();
-        std::cout << "Received from client: " << payload << std::endl;
+        logger.log(Logger::LogLevel::INFO, "Received message: " + payload);
         
         json request = json::parse(payload);
         if (request.contains("action") && request["action"] == "subscribe" && 
@@ -83,7 +87,7 @@ void WebSocketServer::on_message(connection_hdl hdl, server::message_ptr msg) {
             handle_subscription(hdl, symbol);
         }
     } catch (const json::exception& e) {
-        std::cerr << "Invalid message format: " << e.what() << std::endl;
+        logger.log(Logger::LogLevel::ERROR, "Failed to parse WebSocket message: " + std::string(e.what()));
     }
 }
 
@@ -110,10 +114,10 @@ void WebSocketServer::send_subscription_confirmation(connection_hdl hdl, const s
     };
     
     try {
-        std::cout << "Sending confirmation to client" << std::endl;
+        logger.log(Logger::LogLevel::INFO, "Sending confirmation to client");
         m_server.send(hdl, response.dump(), websocketpp::frame::opcode::text);
     } catch (const std::exception& e) {
-        std::cerr << "Error sending confirmation: " << e.what() << std::endl;
+        logger.log(Logger::LogLevel::ERROR, "Error sending subscription confirmation: " + std::string(e.what()));
     }
 }
 
@@ -126,9 +130,9 @@ void WebSocketServer::broadcast_orderbook(const std::string& symbol, const std::
         for (const auto& hdl : m_subscriptions[symbol]) {
             try {
                 m_server.send(hdl, orderbook_update, websocketpp::frame::opcode::text);
-                std::cout << "Sent update to a subscriber" << std::endl;
+                logger.log(Logger::LogLevel::INFO, "Broadcasted orderbook update to client");
             } catch (const std::exception& e) {
-                std::cerr << "Error broadcasting to client: " << e.what() << std::endl;
+                logger.log(Logger::LogLevel::ERROR, "Error broadcasting orderbook update: " + std::string(e.what()));
             }
         }
     } else {

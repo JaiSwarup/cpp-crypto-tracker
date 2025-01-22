@@ -6,6 +6,7 @@ DeribitClient::DeribitClient() : m_ws_enabled(true) {
     this->client_secret = CLIENT_SECRET;
     this->base_url = BASE_URL;
     this->m_ws_uri = WEB_SOCKET_URL;
+    this->logger = Logger();
     if (m_ws_enabled) {
         init_websocket();
     }
@@ -45,16 +46,17 @@ void DeribitClient::init_websocket() {
 
     m_client.set_open_handler([this](websocketpp::connection_hdl hdl) {
         m_ws_hdl = hdl;
-        std::cout << "WebSocket connection opened" << std::endl;
+        logger.log(Logger::LogLevel::INFO, "WebSocket connection established");
         websocket_authenticate();
     });
 
-    m_client.set_fail_handler([](websocketpp::connection_hdl) {
-        std::cout << "WebSocket connection failed" << std::endl;
+    m_client.set_fail_handler([this](websocketpp::connection_hdl) {
+        logger.log(Logger::LogLevel::WARNING, "WebSocket connection failed");
+        
     });
 
-    m_client.set_close_handler([](websocketpp::connection_hdl) {
-        std::cout << "WebSocket connection closed" << std::endl;
+    m_client.set_close_handler([this](websocketpp::connection_hdl) {
+        logger.log(Logger::LogLevel::INFO, "WebSocket connection closed");
     });
 }
 
@@ -62,7 +64,7 @@ void DeribitClient::connect_websocket() {
     websocketpp::lib::error_code ec;
     auto conn = m_client.get_connection(m_ws_uri, ec);
     if (ec) {
-        std::cerr << "WebSocket connection error: " << ec.message() << std::endl;
+        logger.log(Logger::LogLevel::ERROR, "Error connecting to WebSocket: " + ec.message());
         return;
     }
 
@@ -71,7 +73,7 @@ void DeribitClient::connect_websocket() {
         try {
             m_client.run();
         } catch (const std::exception& e) {
-            std::cerr << "WebSocket client thread error: " << e.what() << std::endl;
+            logger.log(Logger::LogLevel::ERROR, "Error running WebSocket client: " + std::string(e.what()));
         }
     });
 }
@@ -97,7 +99,7 @@ void DeribitClient::send_websocket_message(const nlohmann::json& msg) {
         try {
             m_client.send(hdl, msg.dump(), websocketpp::frame::opcode::text);
         } catch (const std::exception& e) {
-            std::cerr << "Error sending WebSocket message: " << e.what() << std::endl;
+            logger.log(Logger::LogLevel::ERROR, "Failed to send WebSocket message: " + std::string(e.what()));
         }
     }
 }
@@ -132,7 +134,7 @@ void DeribitClient::on_websocket_message(ws_client::message_ptr msg) {
         if (response.contains("id")) {
             int id = response["id"].get<int>();
             if (id == 9929 && response.contains("result")) {
-                std::cout << "WebSocket authentication successful" << std::endl;
+                logger.log(Logger::LogLevel::SUCCESS, "WebSocket authentication successful");
                 nlohmann::json heartbeat_msg = {
                     {"jsonrpc", "2.0"},
                     {"id", 9098},
@@ -150,7 +152,7 @@ void DeribitClient::on_websocket_message(ws_client::message_ptr msg) {
             }
         }
     } catch (const nlohmann::json::exception& e) {
-        std::cerr << "Failed to parse WebSocket message: " << e.what() << std::endl;
+        logger.log(Logger::LogLevel::ERROR, "Failed to parse WebSocket message: " + std::string(e.what()));
     }
 }
 
@@ -176,7 +178,7 @@ cpr::Response DeribitClient::authenticate() {
         this->refresh_token = response["result"]["refresh_token"];
         return r;
     }
-    std::cerr << "Authentication failed. HTTP Code: " << r.status_code << "\nResponse: " << r.text << std::endl;
+    logger.log(Logger::LogLevel::ERROR, "Authentication failed");
     throw std::runtime_error("Authentication failed.");
 }
 

@@ -23,31 +23,34 @@
 #include <ctime>
 #include <iomanip>
 
-enum LogLevel {
-    INFO,
-    SUCCESS,
-    WARNING,
-    ERROR
-};
+class Logger{
+public:
+    enum class LogLevel {
+        INFO,
+        SUCCESS,
+        WARNING,
+        ERROR
+    };
 
-void log(LogLevel level, const std::string& message) {
-    std::time_t t = std::time(0);
-    std::tm* now = std::localtime(&t);
-    std::cout << "[" << std::put_time(now, "%F %T") << "] ";
-    switch (level) {
-        case LogLevel::INFO:
-            std::cout << WHITE << "[INFO] " << message << RESET << std::endl;
-            break;
-        case LogLevel::WARNING:
-            std::cout << YELLOW << "[WARNING] "<< message << RESET << std::endl;
-            break;
-        case LogLevel::ERROR:
-            std::cout << RED << "[ERROR] "<< message << RESET << std::endl;
-            break;
-        case LogLevel::SUCCESS:
-            std::cout << GREEN << "[SUCCESS] "<< message << RESET << std::endl;
-            break;
+    void log(LogLevel level, const std::string& message) {
+        std::time_t t = std::time(0);
+        std::tm* now = std::localtime(&t);
+        std::cout << "[" << std::put_time(now, "%F %T") << "] ";
+        switch (level) {
+            case LogLevel::INFO:
+                std::cout << WHITE << "[INFO] " << message << RESET << std::endl;
+                break;
+            case LogLevel::WARNING:
+                std::cout << YELLOW << "[WARNING] "<< message << RESET << std::endl;
+                break;
+            case LogLevel::ERROR:
+                std::cout << RED << "[ERROR] "<< message << RESET << std::endl;
+                break;
+            case LogLevel::SUCCESS:
+                std::cout << GREEN << "[SUCCESS] "<< message << RESET << std::endl;
+                break;
+        }
     }
-}
+};
 
 #endif

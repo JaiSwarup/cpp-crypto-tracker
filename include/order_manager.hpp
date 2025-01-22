@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <nlohmann/json.hpp>
+#include "logger.hpp"
 #include "deribit_client.hpp"
 
 class OrderManager {
@@ -17,6 +18,7 @@ class OrderManager {
         std::string modify_order(const std::string& order_id, const std::string& quantity, const std::string& price);
     private:
         DeribitClient client;
+        Logger logger;
 };
 
 #endif

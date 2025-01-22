@@ -8,6 +8,7 @@
 #include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
 #include <thread>
+#include "logger.hpp"
 #include <functional>
 
 class DeribitClient {
@@ -38,7 +39,7 @@ public:
     
     friend std::ostream& operator<<(std::ostream& os, const DeribitClient& client);
     
-
+    Logger logger;
 private:
     // REST API helpers
     cpr::Response post(const nlohmann::json& payload, bool with_auth = false);
