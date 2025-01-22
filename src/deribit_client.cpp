@@ -303,7 +303,7 @@ cpr::Response DeribitClient::edit_order(const std::string& order_id, const std::
             }},
             {"id", 1}
     };
-    return get(payload);
+    return post(payload, true);
 }
 
 cpr::Response DeribitClient::post(const nlohmann::json& payload, bool with_auth) {
