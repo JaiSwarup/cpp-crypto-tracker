@@ -6,6 +6,7 @@
 #include <websocketpp/config/asio_client.hpp>
 #include <websocketpp/client.hpp>
 #include <cpr/cpr.h>
+#include <chrono>
 #include <nlohmann/json.hpp>
 #include <thread>
 #include "logger.hpp"
@@ -19,12 +20,14 @@ public:
 
     // REST API methods
     cpr::Response authenticate();
+    cpr::Response refresh();
     cpr::Response place_buy_order(const std::string& instrument_name, const std::string& side, 
                                  const std::string& type, const std::string& amount, 
                                  const std::string& price);
     cpr::Response place_sell_order(const std::string& instrument_name, const std::string& side, 
                                   const std::string& type, const std::string& amount, 
                                   const std::string& price);
+    cpr::Response get_all_instruments(const std::string& currency, const std::string& kind);
     cpr::Response get_positions(const std::string& currency, const std::string& kind);
     cpr::Response get_order_book(const std::string& instrument_name);
     cpr::Response cancel_order(const std::string& order_id);
@@ -51,6 +54,7 @@ private:
     std::string base_url;
     std::string access_token;
     std::string refresh_token;
+    std::chrono::time_point<std::chrono::steady_clock> token_expiry_time;
 
     // WebSocket members
     typedef websocketpp::client<websocketpp::config::asio_tls_client> ws_client;

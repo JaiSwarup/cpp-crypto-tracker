@@ -176,10 +176,50 @@ cpr::Response DeribitClient::authenticate() {
         nlohmann::json response = nlohmann::json::parse(r.text);
         this->access_token = response["result"]["access_token"];
         this->refresh_token = response["result"]["refresh_token"];
+        int expires_in = response["result"]["expires_in"];
+        logger.log(Logger::LogLevel::SUCCESS, "Authentication successful");
+        token_expiry_time = std::chrono::steady_clock::now() + std::chrono::seconds(expires_in);
         return r;
     }
     logger.log(Logger::LogLevel::ERROR, "Authentication failed");
     throw std::runtime_error("Authentication failed.");
+}
+
+cpr::Response DeribitClient::refresh() {
+    nlohmann::json payload = {
+            {"jsonrpc", "2.0"},
+            {"method", "public/auth"},
+            {"params", {
+                {"grant_type", "refresh_token"},
+                {"refresh_token", refresh_token}
+            }},
+            {"id", 1}
+    };
+    cpr::Response r = post(payload);
+    if (r.status_code == 200) {
+        nlohmann::json response = nlohmann::json::parse(r.text);
+        this->access_token = response["result"]["access_token"];
+        this->refresh_token = response["result"]["refresh_token"];
+        int expires_in = response["result"]["expires_in"];
+        token_expiry_time = std::chrono::steady_clock::now() + std::chrono::seconds(expires_in);
+        logger.log(Logger::LogLevel::SUCCESS, "Token refresh successful");
+        return r;
+    }
+    logger.log(Logger::LogLevel::ERROR, "Token refresh failed");
+    throw std::runtime_error("Token refresh failed.");
+}
+
+cpr::Response DeribitClient::get_all_instruments(const std::string& currency, const std::string& kind) {
+    nlohmann::json payload = {
+            {"jsonrpc", "2.0"},
+            {"method", "public/get_instruments"},
+            {"params", {
+                {"currency", currency},
+                {"kind", kind}
+            }},
+            {"id", 1}
+    };
+    return post(payload);
 }
 
 cpr::Response DeribitClient::place_buy_order(const std::string& instrument_name, const std::string& side, const std::string& type, const std::string& amount, const std::string& price) {
@@ -268,6 +308,9 @@ cpr::Response DeribitClient::edit_order(const std::string& order_id, const std::
 
 cpr::Response DeribitClient::post(const nlohmann::json& payload, bool with_auth) {
     if (with_auth) {
+        if (std::chrono::steady_clock::now() >= token_expiry_time) {
+            refresh();
+        }
         return cpr::Post(cpr::Url{BASE_URL},
                         cpr::Body{payload.dump()},
                         cpr::Header{{"Authorization", "Bearer " + this->access_token}}

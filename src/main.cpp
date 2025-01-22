@@ -1,5 +1,6 @@
 #include "websocket_manager.hpp"
 #include "order_manager.hpp"
+#include "market_manager.hpp"
 #include "config.h"
 #include <iostream>
 #include <csignal>
@@ -7,6 +8,9 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+
+#define BLUE    "\033[34m"      /* Blue */
+#define RESET   "\033[0m"
 
 std::atomic<bool> running{true};
 std::mutex mtx;
@@ -35,7 +39,8 @@ int main() {
         DeribitClient deribit_client;
         deribit_client.authenticate();
         WebSocketServer server(deribit_client);
-        OrderManager manager(deribit_client);
+        OrderManager order_manager(deribit_client);
+        MarketManager market_manager(deribit_client);
         server_ptr = &server;
 
         while (true) {
@@ -43,6 +48,7 @@ int main() {
                 std::lock_guard<std::mutex> lock(mtx);
                 if (!running) break;
             }
+            std::cout << BLUE;
             std::cout << "==================================================================" << std::endl;
             std::cout << "DERIBIT ORDER MANAGEMENT PLATFORM" << std::endl;
             std::cout << "1. View Current Positions" << std::endl;
@@ -51,8 +57,10 @@ int main() {
             std::cout << "4. Modify Order" << std::endl;
             std::cout << "5. View Orderbook" << std::endl;
             std::cout << "6. Start WebSocket Server" << std::endl;
-            std::cout << "7. Exit" << std::endl;
+            std::cout << "7. View All Avalable Instruments (Market Coverage)" << std::endl;
+            std::cout << "8. Exit" << std::endl;
             std::cout << "Enter your choice:  ";
+            std::cout << RESET;
             int choice;
             if (!(std::cin >> choice)) {
                 //Handle input in case of SIGINT
@@ -67,7 +75,7 @@ int main() {
                     std::cin >> currency;
                     std::cout << "Enter kind: ";
                     std::cin >> kind;
-                    std::cout << manager.view_current_positions(currency, kind) << std::endl;
+                    std::cout << order_manager.view_current_positions(currency, kind) << std::endl;
                     break;
                 }
                 case 2: {
@@ -82,14 +90,14 @@ int main() {
                     std::cin >> quantity;
                     std::cout << "Enter price: ";
                     std::cin >> price;
-                    std::cout << manager.place_order(symbol, side, type, quantity, price) << std::endl;
+                    std::cout << order_manager.place_order(symbol, side, type, quantity, price) << std::endl;
                     break;
                 }
                 case 3: {
                     std::string order_id;
                     std::cout << "Enter order id: ";
                     std::cin >> order_id;
-                    std::cout << manager.cancel_order(order_id) << std::endl;
+                    std::cout << order_manager.cancel_order(order_id) << std::endl;
                     break;
                 }
                 case 4: {
@@ -100,14 +108,14 @@ int main() {
                     std::cin >> quantity;
                     std::cout << "Enter price: ";
                     std::cin >> price;
-                    std::cout << manager.modify_order(order_id, quantity, price) << std::endl;
+                    std::cout << order_manager.modify_order(order_id, quantity, price) << std::endl;
                     break;
                 }
                 case 5: {
                     std::string instrument_name;
                     std::cout << "Enter Instrument Name: ";
                     std::cin >> instrument_name;
-                    std::cout << manager.get_orderbook(instrument_name) << std::endl;
+                    std::cout << order_manager.get_orderbook(instrument_name) << std::endl;
                     break;
                 }
                 case 6: {
@@ -129,11 +137,24 @@ int main() {
                     break;
                 }
                 case 7: {
-                    signal_handler(SIGINT);
+                    std::string currency, kind;
+                    std::cout << "Enter currency: ";
+                    std::cin >> currency;
+                    std::cout << "Enter kind: ";
+                    std::cin >> kind;
+                    std::cout << market_manager.view_all_instruments(currency, kind) << std::endl;
+                    break;
+                }
+                case 8: {
+                    std::cout << "Shutting down..." << std::endl;
+                    running = false;
                     break;
                 }
                 default: {
                     std::cout << "Invalid choice" << std::endl;
+                    std::cout << "Shutting down..." << std::endl;
+                    running = false;
+                    break;
                 }
             }
         {
