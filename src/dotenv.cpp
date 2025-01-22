@@ -9,24 +9,12 @@ std::string get(const char *name, const char *default_value)
     auto dv = default_value == nullptr
         ? std::string()
         : std::string(default_value);
-#ifdef _WIN32
-    size_t size = 0;
-    getenv_s(&size, nullptr, 0, name);
-    if (size > 0) {
-        std::string value(size - 1, '\0');
-        getenv_s(&size, &value[0], size, name);
-        return value;
-    } else {
-        return dv;
-    }
-#else
     const char *value = getenv(name);
     if (value != nullptr) {
         return std::string(value);
     } else {
         return dv;
     }
-#endif
 }
 
 std::string get(const std::string &name, const std::string &default_value)
@@ -36,12 +24,7 @@ std::string get(const std::string &name, const std::string &default_value)
 
 void set(const char *name, const char *value)
 {
-#ifdef _WIN32
-    auto var = std::string(name) + '=' + value;
-    (void)_putenv(var.c_str());
-#else
     setenv(name, value, true);
-#endif
 }
 
 void set(const std::string &name, const std::string &value)
@@ -51,12 +34,7 @@ void set(const std::string &name, const std::string &value)
 
 void unset(const char *name)
 {
-#ifdef _WIN32
-    auto var = std::string(name) + '=';
-    (void)_putenv(var.c_str());
-#else
     unsetenv(name);
-#endif
 }
 
 void unset(const std::string &name)
@@ -104,4 +82,4 @@ bool load(const std::string &filename)
     return load(filename.c_str());
 }
 
-} // namespace dotenv
+} 

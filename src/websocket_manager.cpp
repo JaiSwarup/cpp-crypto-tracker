@@ -1,18 +1,15 @@
-// websocket_manager.cpp
 #include "websocket_manager.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
 
 using json = nlohmann::json;
 
-WebSocketManager::WebSocketManager(DeribitClient& deribit_client)
+WebSocketServer::WebSocketServer(DeribitClient& deribit_client)
     : m_running(false), m_deribit_client(deribit_client) {
 
-    // Configure WebSocket server
-    m_server.clear_access_channels(websocketpp::log::alevel::frame_payload);
+    m_server.clear_access_channels(websocketpp::log::alevel::all);
     m_server.init_asio();
 
-    // Set up connection handlers
     m_server.set_open_handler([this](connection_hdl hdl) {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_connections.insert(hdl);
@@ -32,23 +29,19 @@ WebSocketManager::WebSocketManager(DeribitClient& deribit_client)
         on_message(hdl, msg);
     });
 
-    // Set up broadcast callback for Deribit client
     m_deribit_client.set_broadcast_callback([this](const std::string& channel, const std::string& data) {
         std::cout << "Received broadcast callback for channel: " << channel << std::endl;
         broadcast_orderbook(channel, data);
     });
 }
 
-void WebSocketManager::run(uint16_t port) {
-    // std::cout << "Starting WebSocket server on port " << port << std::endl;
+void WebSocketServer::run(uint16_t port) {
     if (m_running) return;
-    // std::cout << "Starting WebSocket server on port " << port << std::endl;
 
     try {
         m_server.listen(port);
         m_server.start_accept();
-        
-        // Connect to Deribit
+    
         m_deribit_client.connect_websocket();
         
         m_running = true;
@@ -60,7 +53,7 @@ void WebSocketManager::run(uint16_t port) {
     }
 }
 
-void WebSocketManager::stop() {
+void WebSocketServer::stop() {
     if (!m_running) return;
 
     try {
@@ -71,11 +64,11 @@ void WebSocketManager::stop() {
     }
 }
 
-bool WebSocketManager::is_running() const {
+bool WebSocketServer::is_running() const {
     return m_running;
 }
 
-void WebSocketManager::on_message(connection_hdl hdl, server::message_ptr msg) {
+void WebSocketServer::on_message(connection_hdl hdl, server::message_ptr msg) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     try {
@@ -94,12 +87,11 @@ void WebSocketManager::on_message(connection_hdl hdl, server::message_ptr msg) {
     }
 }
 
-void WebSocketManager::handle_subscription(connection_hdl hdl, const std::string& symbol) {
+void WebSocketServer::handle_subscription(connection_hdl hdl, const std::string& symbol) {
     std::string channel = "book." + symbol + ".agg2";
     
     m_subscriptions[channel].insert(hdl);
     
-    // Subscribe to Deribit if this is the first subscriber
     if (m_subscriptions[channel].size() == 1) {
         std::cout << "First subscriber for " << symbol << ", subscribing to Deribit" << std::endl;
         m_deribit_client.subscribe_to_channel(channel);
@@ -111,7 +103,7 @@ void WebSocketManager::handle_subscription(connection_hdl hdl, const std::string
     send_subscription_confirmation(hdl, channel);
 }
 
-void WebSocketManager::send_subscription_confirmation(connection_hdl hdl, const std::string& symbol) {
+void WebSocketServer::send_subscription_confirmation(connection_hdl hdl, const std::string& symbol) {
     json response = {
         {"status", "subscribed"},
         {"symbol", symbol}
@@ -125,7 +117,7 @@ void WebSocketManager::send_subscription_confirmation(connection_hdl hdl, const 
     }
 }
 
-void WebSocketManager::broadcast_orderbook(const std::string& symbol, const std::string& orderbook_update) {
+void WebSocketServer::broadcast_orderbook(const std::string& symbol, const std::string& orderbook_update) {
     std::lock_guard<std::mutex> lock(m_mutex);
     std::cout << "Broadcasting to subscribers of " << symbol << std::endl;
     

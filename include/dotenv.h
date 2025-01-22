@@ -22,6 +22,6 @@ void read(std::istream &stream,
 bool load(const char *filename = ".env");
 bool load(const std::string &filename = ".env");
 
-} // namespace dotenv
+}
 
 #endif

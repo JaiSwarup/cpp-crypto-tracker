@@ -10,4 +10,4 @@ extern std::string WEB_SOCKET_URL;
 
 void loadConfig();
 
-#endif // CONFIG_H
+#endif

@@ -1,4 +1,3 @@
-// deribit_client.hpp
 #ifndef DERIBIT_CLIENT_HPP
 #define DERIBIT_CLIENT_HPP
 
@@ -25,7 +24,7 @@ public:
     cpr::Response place_sell_order(const std::string& instrument_name, const std::string& side, 
                                   const std::string& type, const std::string& amount, 
                                   const std::string& price);
-    cpr::Response get_positions();
+    cpr::Response get_positions(const std::string& currency, const std::string& kind);
     cpr::Response get_order_book(const std::string& instrument_name);
     cpr::Response cancel_order(const std::string& order_id);
     cpr::Response edit_order(const std::string& order_id, const std::string& quantity, 

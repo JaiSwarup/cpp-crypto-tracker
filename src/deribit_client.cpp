@@ -1,4 +1,3 @@
-// deribit_client.cpp
 #include "deribit_client.hpp"
 #include "config.h"
 
@@ -24,15 +23,6 @@ DeribitClient::DeribitClient(DeribitClient& other) {
         init_websocket();
     }
 }
-
-// DeribitClient::DeribitClient(const std::string& ws_uri, const std::string& client_id, 
-//                            const std::string& client_secret) 
-//     : m_ws_uri(ws_uri), client_id(client_id), client_secret(client_secret), m_ws_enabled(true) {
-//     this->base_url = BASE_URL;
-//     if (m_ws_enabled) {
-//         init_websocket();
-//     }
-// }
 
 DeribitClient::~DeribitClient() {
     if (m_ws_enabled && m_client_thread.joinable()) {
@@ -168,8 +158,6 @@ void DeribitClient::set_broadcast_callback(std::function<void(const std::string&
     m_broadcast_callback = callback;
 }
 
-// Keep all existing REST API methods (authenticate, place_buy_order, place_sell_order, etc.) as they are
-
 cpr::Response DeribitClient::authenticate() {
     nlohmann::json payload = {
             {"jsonrpc", "2.0"},
@@ -186,7 +174,6 @@ cpr::Response DeribitClient::authenticate() {
         nlohmann::json response = nlohmann::json::parse(r.text);
         this->access_token = response["result"]["access_token"];
         this->refresh_token = response["result"]["refresh_token"];
-        // std::cout << this << std::endl;
         return r;
     }
     std::cerr << "Authentication failed. HTTP Code: " << r.status_code << "\nResponse: " << r.text << std::endl;
@@ -211,7 +198,7 @@ cpr::Response DeribitClient::place_buy_order(const std::string& instrument_name,
 cpr::Response DeribitClient::place_sell_order(const std::string& instrument_name, const std::string& side, const std::string& type, const std::string& amount, const std::string& price) {
     nlohmann::json payload = {
             {"jsonrpc", "2.0"},
-            {"method", "private/buy"},
+            {"method", "private/sell"},
             {"params", {
                 {"instrument_name", instrument_name},
                 {"amount", amount},
@@ -224,14 +211,17 @@ cpr::Response DeribitClient::place_sell_order(const std::string& instrument_name
     return post(payload, true);
 }
 
-cpr::Response DeribitClient::get_positions() {
+cpr::Response DeribitClient::get_positions(const std::string& currency, const std::string& kind) {
     nlohmann::json payload = {
             {"jsonrpc", "2.0"},
             {"method", "private/get_positions"},
-            {"params", {}},
+            {"params", {
+                {"currency", currency},
+                {"kind", kind}
+            }},
             {"id", 1}
     };
-    return get(payload);
+    return post(payload, true);
 }
 
 cpr::Response DeribitClient::get_order_book(const std::string& instrument_name) {
@@ -251,7 +241,7 @@ cpr::Response DeribitClient::get_order_book(const std::string& instrument_name) 
 cpr::Response DeribitClient::cancel_order(const std::string& order_id) {
     nlohmann::json payload = {
             {"jsonrpc", "2.0"},
-            {"method", "private/cancel_order"},
+            {"method", "private/cancel"},
             {"params", {
                 {"order_id", order_id}
             }},
@@ -263,7 +253,7 @@ cpr::Response DeribitClient::cancel_order(const std::string& order_id) {
 cpr::Response DeribitClient::edit_order(const std::string& order_id, const std::string& quantity, const std::string& price) {
     nlohmann::json payload = {
             {"jsonrpc", "2.0"},
-            {"method", "private/edit_order"},
+            {"method", "private/edit"},
             {"params", {
                 {"order_id", order_id},
                 {"amount", quantity},
@@ -294,7 +284,6 @@ cpr::Response DeribitClient::get(const nlohmann::json& payload) {
     );
 }
 
-// overloading the << operator to print the client object
 std::ostream& operator<<(std::ostream& os, const DeribitClient& client) {
     os << "Client ID: " << client.client_id << std::endl;
     os << "Client Secret: " << client.client_secret << std::endl;

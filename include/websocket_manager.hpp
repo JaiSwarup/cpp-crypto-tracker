@@ -1,4 +1,3 @@
-// websocket_manager.hpp
 #ifndef WEBSOCKET_MANAGER_HPP
 #define WEBSOCKET_MANAGER_HPP
 
@@ -13,14 +12,12 @@
 typedef websocketpp::server<websocketpp::config::asio> server;
 typedef websocketpp::connection_hdl connection_hdl;
 
-// Hash function for connection handles
 struct connection_hash {
     size_t operator()(websocketpp::connection_hdl const& hdl) const {
         return std::hash<void*>()(hdl.lock().get());
     }
 };
 
-// Equality comparison for connection handles
 struct connection_equal {
     bool operator()(websocketpp::connection_hdl const& hdl1, 
                    websocketpp::connection_hdl const& hdl2) const {
@@ -28,9 +25,9 @@ struct connection_equal {
     }
 };
 
-class WebSocketManager {
+class WebSocketServer {
 public:
-    WebSocketManager(DeribitClient& m_deribit_client);
+    WebSocketServer(DeribitClient& m_deribit_client);
 
     void run(uint16_t port);
     void stop();
@@ -51,4 +48,4 @@ private:
     bool m_running;
 };
 
-#endif // WEBSOCKET_MANAGER_HPP
+#endif
